@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+uploads/
+outputs/
+database/*.db
+test_exp.py
+test_res.txt
+.vscode/
+.DS_Store

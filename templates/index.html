@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MediExplain AI — Multilingual Medical Report Simplifier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="wordmark"><span class="mark"></span> MediExplain <span style="color:var(--stone); font-weight:400; font-size:0.9rem;">AI</span></div>
+    <nav class="nav-links" id="nav-links">
+      <button data-view="home" class="active">Home</button>
+      <button data-view="upload">Upload</button>
+      <button data-view="history">👤 History</button>
+      <button data-view="about">How it works</button>
+      <button data-view="safety">Safety</button>
+    </nav>
+    <div class="lang-pill" id="lang-pill">
+      {% for code, name in languages.items() %}
+      <button data-lang="{{ code }}" class="{{ 'active' if code == 'en' else '' }}">{{ name }}</button>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<main class="shell">
+
+  <!-- HOME -->
+  <section class="view active" id="view-home">
+    <div class="hero">
+      <div>
+        <h1>Understand your lab report, in your own language.</h1>
+        <p class="lede">Upload a laboratory report and MediExplain AI reads it, checks each result against the reference range printed on your own report, and explains it in plain English, Marathi, or Hindi — with a voice you can just listen to.</p>
+        <div class="cta-row">
+          <button class="btn btn-primary" data-goto="upload">Upload a report</button>
+          <button class="btn btn-ghost" data-goto="about">See how it works</button>
+        </div>
+        <div class="safety-line">
+          <span>⚕</span>
+          <span>{{ safety_disclaimer }}</span>
+        </div>
+      </div>
+      <div class="transform-card">
+        <div class="label">What the report says</div>
+        <div class="transform-line" id="hero-jargon">Hemoglobin&nbsp;9.5&nbsp;g/dL&nbsp;&nbsp;Ref&nbsp;12–15</div>
+        <div class="transform-arrow">↓ explained simply</div>
+        <div class="transform-plain" id="hero-plain">
+          <div class="status-chip low"><span class="dot"></span> Low</div>
+          <div id="hero-plain-text">Your hemoglobin is a little below the range printed on your report. Worth discussing with your doctor.</div>
+        </div>
+        <div class="transform-note">Live example — cycles through your selected languages.</div>
+      </div>
+    </div>
+
+    <div class="steps-row">
+      <div class="step"><div class="num">01</div><h3>Scan</h3><p>OCR reads the text straight off your uploaded report.</p></div>
+      <div class="step"><div class="num">02</div><h3>Compare</h3><p>Each value is checked against the range printed on that same report.</p></div>
+      <div class="step"><div class="num">03</div><h3>Explain</h3><p>A short, plain-language explanation — never a diagnosis.</p></div>
+      <div class="step"><div class="num">04</div><h3>Speak</h3><p>Listen to the explanation in your chosen language.</p></div>
+    </div>
+  </section>
+
+  <!-- UPLOAD -->
+  <section class="view" id="view-upload">
+    <div class="panel" style="max-width:640px; margin:0 auto;">
+      <h2 style="font-family:var(--font-display); font-size:1.4rem;">Upload your report</h2>
+      <p style="color:var(--ink-soft); margin-top:6px;">PDF, JPG, JPEG or PNG. Nothing is stored after this analysis unless you choose to save it.</p>
+
+      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload a file">
+        <div class="icon">📄</div>
+        <div><strong>Drop your report here</strong>, or click to browse</div>
+        <div class="hint">Max 15 MB · PDF, JPG, JPEG, PNG</div>
+        <input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png" hidden>
+      </div>
+      <div id="file-chip-holder"></div>
+
+      <div class="field-label">Explain results in</div>
+      <div class="chip-row" id="upload-lang-row">
+        {% for code, name in languages.items() %}
+        <button class="chip {{ 'active' if code == 'en' else '' }}" data-lang="{{ code }}">{{ name }}</button>
+        {% endfor %}
+        {% for code, name in planned_languages.items() %}
+        <button class="chip disabled" disabled title="Coming soon">{{ name }}</button>
+        {% endfor %}
+      </div>
+
+      <div class="panel-actions">
+        <button class="btn btn-primary" id="analyze-btn" disabled>Analyze report</button>
+        <span style="color:var(--stone); font-size:0.85rem;" id="demo-mode-note">
+          {% if demo_mode %}Running in demo mode — explanations use safe templates instead of a live AI call.{% endif %}
+        </span>
+      </div>
+      <div id="upload-error-holder"></div>
+    </div>
+  </section>
+
+  <!-- PROCESSING -->
+  <section class="view" id="view-processing">
+    <div class="panel stepper">
+      <h2 style="font-family:var(--font-display); font-size:1.3rem; margin-bottom:20px; text-align:center;">Reading your report…</h2>
+      <div id="stepper-list"></div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section class="view" id="view-results">
+    <div id="results-holder"></div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="view" id="view-history">
+    <div class="panel-header" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <h2 style="font-family:var(--font-display); font-size:1.6rem;">👤 User History</h2>
+        <p style="color:var(--ink-soft); margin-top:4px;">View previously saved report analyses and track your lab test trends over time.</p>
+      </div>
+      <button class="btn btn-primary" data-goto="upload">Analyze New Report</button>
+    </div>
+    <div id="history-holder"></div>
+  </section>
+
+  <!-- COMPARISON -->
+  <section class="view" id="view-comparison">
+    <div id="comparison-holder"></div>
+  </section>
+
+  <!-- ABOUT -->
+  <section class="view" id="view-about">
+    <div class="prose">
+      <h2>How MediExplain AI works</h2>
+      <p>Every step stays close to what your report already says. Nothing is invented, and nothing is diagnosed.</p>
+    </div>
+    <div class="about-grid">
+      <div class="about-card"><div class="num">01</div><h3>Optical character recognition</h3><p>Tesseract/EasyOCR, with OpenCV image cleanup first, reads the text on your scanned or photographed report.</p></div>
+      <div class="about-card"><div class="num">02</div><h3>Data extraction</h3><p>A fast text-parsing routine finds each test's name, value, unit, and the reference range printed alongside it.</p></div>
+      <div class="about-card"><div class="num">03</div><h3>AI explanation</h3><p>Only the extracted numbers are handed to the explanation step — never asked to guess a disease or a treatment.</p></div>
+      <div class="about-card"><div class="num">04</div><h3>Translation &amp; voice</h3><p>The explanation is translated into your chosen language and read aloud through a Listen button.</p></div>
+    </div>
+  </section>
+
+  <!-- SAFETY -->
+  <section class="view" id="view-safety">
+    <div class="prose">
+      <h2>Safety &amp; disclaimer</h2>
+      <p>{{ safety_disclaimer }}</p>
+    </div>
+    <ul class="safety-list">
+      <li>Does not diagnose any disease or condition.</li>
+      <li>Does not name a possible disease based on a result.</li>
+      <li>Does not prescribe medicines, dosages, or treatment.</li>
+      <li>Never invents a reference range that isn't printed on your report.</li>
+      <li>Clearly labels a result "Unable to determine" rather than guessing.</li>
+    </ul>
+    <ul class="safety-list do">
+      <li>Always shows the reference range exactly as printed on your report.</li>
+      <li>Always encourages you to consult a qualified healthcare professional.</li>
+      <li>Keeps your uploaded file only for the moment it's being analyzed.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="shell">MediExplain AI — a student project prototype. Not a substitute for professional medical advice.</div>
+</footer>
+
+<script>
+  window.MEDIEXPLAIN_CONFIG = {
+    languages: {{ languages | tojson }},
+    demoMode: {{ demo_mode | tojson }},
+    safetyDisclaimer: {{ safety_disclaimer | tojson }}
+  };
+</script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

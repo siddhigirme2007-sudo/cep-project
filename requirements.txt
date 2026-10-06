@@ -1,0 +1,26 @@
+# MediExplain AI — Python dependencies
+# Install with: pip install -r requirements.txt
+
+Flask==3.1.3
+
+# OCR
+pytesseract==0.3.13
+opencv-python-headless==4.13.0.92
+Pillow==12.1.1
+
+# PDF -> image rendering (only one of these is required; PyMuPDF has no
+# external system dependency, so it's the easier option on Windows)
+PyMuPDF==1.24.10
+# pdf2image==1.17.0        # alternative to PyMuPDF; needs poppler-utils installed separately
+
+# Translation (optional — app falls back to an offline phrase table
+# for the demo templates if this isn't installed or there's no network)
+deep-translator==1.11.4
+
+# Text-to-speech (optional — app falls back to the browser's built-in
+# voice via the Listen button if this isn't installed or there's no network)
+gTTS==2.5.3
+
+# AI explanation (optional — app runs in DEMO_MODE with safe templates
+# if this isn't installed or ANTHROPIC_API_KEY isn't set)
+anthropic==0.39.0
