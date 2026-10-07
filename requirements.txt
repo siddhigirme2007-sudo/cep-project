@@ -24,3 +24,4 @@ gTTS==2.5.3
 # AI explanation (optional — app runs in DEMO_MODE with safe templates
 # if this isn't installed or ANTHROPIC_API_KEY isn't set)
 anthropic==0.39.0
+gunicorn
